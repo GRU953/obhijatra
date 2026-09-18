@@ -1,0 +1,3 @@
+#!/bin/sh
+# Refuses the commit if any staged file contains something that looks like a secret.
+node scripts/pre-commit-scan.mjs || exit 1

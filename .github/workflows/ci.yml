@@ -1,0 +1,27 @@
+# Runs on every save to the project. If any step fails, the change is not safe.
+name: Check everything
+on: [push, pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '24', cache: 'npm' }
+      - run: npm ci
+
+      - name: Refuse any committed secret
+        run: node scripts/pre-commit-scan.mjs --all
+
+      - name: Check the code is written correctly
+        run: npm run typecheck
+
+      - name: Check the safety rules are obeyed
+        run: npm run lint
+
+      - name: Run the tests
+        run: npm run test
+
+      - name: Check the app still builds
+        run: npm run build

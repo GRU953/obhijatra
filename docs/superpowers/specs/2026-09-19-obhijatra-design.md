@@ -161,10 +161,11 @@ each July.
 
 ## 6. Build phases
 
-Estimates assume roughly **20–25 hours a week** of the owner's attention. At 10 hours a
-week, double every figure. This assumption is stated because the research on nonprofit
-technology is blunt that the biggest risk is not a broken framework — it is the one person
-driving it stopping.
+**Confirmed 19 September 2026: the owner will give 25–40 hours a week.** At that rate,
+phases 0–5 complete in roughly **5–7 months**. The figure is recorded rather than assumed
+because the research on nonprofit technology is blunt that the biggest risk is not a broken
+framework — it is the one person driving it stopping, and a plan built on an unstated
+assumption is how that happens quietly.
 
 ### Phase 0 — Foundations that cannot wait *(1 week)*
 Sandbox toolchain **(done — Java 21 LTS, Android SDK 36, adb, 853 MB, nothing system-wide)**.
@@ -253,12 +254,25 @@ Applying requirement 15 (YAGNI) honestly:
 | **The owner stops** | The largest risk of all, per the development literature. Mitigated by open source from day one, backups two people can restore, plain-English explanations throughout, and ordinary PostgreSQL and SQLite that any developer could pick up. |
 | **Free tiers change their terms** | Real and recent: Oracle halved its free compute in June 2026 without announcement; Xata and Fly.io removed free tiers entirely. Mitigated by owning nothing proprietary — ordinary Postgres, ordinary SQLite, settings as plain files, and a one-button export of everything in the first release. |
 | **A leak harms a beneficiary** | Bangladesh's Section 24 grants a broad national-security override with no judicial test, and the regulator sits within the Prime Minister's Office. **This system cannot resist a lawful order**, and is designed accordingly: no national IDs, sensitive programmes walled off by default, and minimisation before encryption — because data never collected cannot be compelled. |
-| **The calendar outruns the enthusiasm** | Phases 0–5 total **25–36 working weeks** to first release (Phase 6 is beyond that, and its length is set by what the pilot actually asks for). At 20–25 hours a week that is roughly 7–10 months; at 10 hours a week, 14–20 months. The counter is that something real is in a real worker's hands at the end of **Phase 1** — around week 5–7 — not at the end of Phase 6. |
+| **The calendar outruns the enthusiasm** | Phases 0–5 total **25–36 working weeks** to first release (Phase 6 is beyond that, and its length is set by what the pilot actually asks for). At the owner's confirmed 25–40 hours a week that is roughly **5–7 months**; at 10 hours a week it would be 14–20 months. The counter is that something real is in a real worker's hands at the end of **Phase 1** — around week 5–7 — not at the end of Phase 6. |
 
 ---
 
-## 9. Open question for the owner
+## 9. Status and the remaining open question
 
-**How many hours a week will you realistically give this?** Every figure above scales
-directly from it, and a plan built on an unstated assumption is how good projects quietly
-become abandoned ones.
+**Approved 19 September 2026.** Effort confirmed at 25–40 hours a week. Phase 0 begins.
+
+**The one thing still open: no pilot organisation is formally agreed.** One is likely but
+nothing is signed. This matters more than it looks, because Phase 6's specification is
+defined here as *"a written log of what the pilot organisation actually asked for"* — and
+without a real organisation there is no such log, so Phase 6 would be guesswork.
+
+Two consequences, applied from now:
+
+1. **Phase 1 is built to be demonstrable on a single phone**, so the owner has something
+   real to show a prospective partner rather than a description of an idea.
+2. **The oldest Android version supported stays undecided** until someone surveys what
+   phones a real organisation's staff actually carry. The panels split three ways on this
+   (as wide as possible / Android 10 / Android 8, the floor ODK Collect itself adopted in
+   2026). It should be measured, not argued. Until then the build targets Android 8 and up
+   and the question stays open.
