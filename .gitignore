@@ -1,0 +1,21 @@
+# Leftovers from earlier tooling — kept on disk, never committed
+.claude-flow/
+.swarm/
+ruvector.db
+*.db-shm
+*.db-wal
+
+# Sandbox toolchain lives outside the repo, but never commit build output
+node_modules/
+dist/
+build/
+android/app/build/
+.DS_Store
+*.log
+
+# Never commit secrets
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
