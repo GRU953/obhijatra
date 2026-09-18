@@ -1,0 +1,66 @@
+# Takes a locked copy of the whole database every night and puts it in three
+# independent places. The free database plan keeps NO backups of its own, so
+# without this one accidental delete is permanent.
+name: Nightly backup
+on:
+  schedule: [{ cron: '0 18 * * *' }]   # midnight, Bangladesh time
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '24' }
+
+      - name: Say which destinations are actually configured
+        run: |
+          echo "A backup that quietly does not happen is worse than none, so this"
+          echo "reports the truth before anything runs."
+          [ -n "${{ secrets.SUPABASE_DB_URL }}" ]      && echo "database access      : configured" || { echo "database access      : MISSING -- cannot back up at all"; exit 1; }
+          [ -n "${{ secrets.BACKUP_PASSPHRASE }}" ]    && echo "backup password      : configured" || { echo "backup password      : MISSING -- refusing to store an unlocked backup"; exit 1; }
+          [ -n "${{ secrets.CLOUDFLARE_API_TOKEN }}" ] && [ -n "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ] && echo "copy 1 Cloudflare R2 : configured" || echo "copy 1 Cloudflare R2 : NOT configured (needs CLOUDFLARE_ACCOUNT_ID as well as the token)"
+          [ -n "${{ secrets.B2_KEY_ID }}" ] && [ -n "${{ secrets.B2_ENDPOINT }}" ] && echo "copy 2 Backblaze B2  : configured" || echo "copy 2 Backblaze B2  : NOT configured (needs B2_ENDPOINT, e.g. https://s3.us-west-004.backblazeb2.com)"
+          echo "copy 3 GitHub        : configured"
+
+      - name: Take the backup
+        run: pg_dump "${{ secrets.SUPABASE_DB_URL }}" --no-owner --no-acl > dump.sql
+
+      - name: Check it is complete before trusting it
+        run: node -e "import('./scripts/restore-rehearsal.mjs').then(m=>m.verifyRestore('dump.sql')).then(r=>console.log('backup contains',r.tables,'tables and',r.rows,'data blocks'))"
+
+      - name: Lock it with a password
+        run: |
+          gpg --batch --yes --passphrase "${{ secrets.BACKUP_PASSPHRASE }}" \
+              --symmetric --cipher-algo AES256 dump.sql
+          rm -f dump.sql   # never keep the unlocked copy around
+          echo "locked size: $(du -h dump.sql.gpg | cut -f1)"
+
+      - name: Copy 1 of 3 — Cloudflare R2
+        if: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: npx --yes wrangler@latest r2 object put "obhijatra-backups/$(date +%F).sql.gpg" --file dump.sql.gpg --remote
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Copy 2 of 3 — Backblaze B2
+        if: ${{ secrets.B2_ENDPOINT != '' }}
+        run: aws s3 cp dump.sql.gpg "s3://obhijatra-backups/$(date +%F).sql.gpg" --endpoint-url "$B2_ENDPOINT"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_KEY }}
+          B2_ENDPOINT: ${{ secrets.B2_ENDPOINT }}
+
+      - name: Copy 3 of 3 — GitHub release
+        run: gh release create "backup-$(date +%F)" dump.sql.gpg --notes "Automatic nightly backup. Locked with the backup password." || gh release upload "backup-$(date +%F)" dump.sql.gpg --clobber
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+
+      - name: Remove backups older than 35 days, so a deletion truly completes
+        run: |
+          # Erasure is a legal right. A backup kept forever defeats it, so the
+          # window is deliberately bounded rather than infinite.
+          gh release list --limit 200 --json tagName,createdAt \
+            --jq '.[] | select(.tagName | startswith("backup-")) | select(.createdAt < (now - 35*86400 | todate)) | .tagName' \
+          | while read -r tag; do [ -n "$tag" ] && gh release delete "$tag" --yes --cleanup-tag; done
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }

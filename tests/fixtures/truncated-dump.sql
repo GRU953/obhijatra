@@ -1,0 +1,3 @@
+CREATE TABLE a();
+CREATE TABLE b();
+COPY a FROM stdin;

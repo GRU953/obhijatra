@@ -1,0 +1,28 @@
+# Applies database changes, then proves the wall between organisations still holds.
+# Runs in the cloud so the database password never sits on anyone's laptop.
+name: Apply database changes
+on:
+  push:
+    branches: [main]
+    paths: ['supabase/**']
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply every migration, in order
+        run: |
+          for file in supabase/migrations/*.sql; do
+            echo "--> applying $file"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$file"
+          done
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+
+      - name: Prove one organisation still cannot read another's records
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/rls.sql
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}

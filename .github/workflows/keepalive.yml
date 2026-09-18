@@ -1,0 +1,24 @@
+# The free database plan switches a project OFF after 7 days of silence. A solo
+# owner will have quiet fortnights -- illness, floods, a day job -- and each gap
+# makes the whole system look broken overnight. This one job removes that entire
+# class of phantom failure for about a minute of computer time a month.
+name: Keep the free database awake
+on:
+  schedule: [{ cron: '0 6 * * 1,4' }]   # Mondays and Thursdays
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask the database a trivial question
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/organisations?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}")
+          echo "the server replied $code"
+          # 200 = awake and answering. 401 or 404 = awake and refusing, also fine.
+          case "$code" in
+            200|401|404) echo "awake" ;;
+            *) echo "No answer. The project may have paused -- open the Supabase dashboard and press Restore."; exit 1 ;;
+          esac
