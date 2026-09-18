@@ -13,6 +13,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with: { node-version: '24' }
+
+      - name: Make the connection address safe for any password
+        id: db
+        run: echo "url=$(node scripts/normalise-db-url.mjs "$RAW")" >> "$GITHUB_OUTPUT"
+        env:
+          RAW: ${{ secrets.SUPABASE_DB_URL }}
+
       - name: Apply every migration, in order
         run: |
           for file in supabase/migrations/*.sql; do
@@ -20,9 +29,9 @@ jobs:
             psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$file"
           done
         env:
-          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+          DATABASE_URL: ${{ steps.db.outputs.url }}
 
       - name: Prove one organisation still cannot read another's records
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/rls.sql
         env:
-          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+          DATABASE_URL: ${{ steps.db.outputs.url }}

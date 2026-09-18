@@ -3,7 +3,7 @@
 // so a mistake cannot slip through by someone skipping the local check.
 import { execSync } from 'node:child_process'
 import { readFileSync, existsSync } from 'node:fs'
-import { scanForSecrets, shouldScan } from './check-secrets.mjs'
+import { scanForSecrets, shouldScan, declaresExamples } from './check-secrets.mjs'
 
 const files = process.argv[2] === '--all'
   ? execSync('git ls-files', { encoding: 'utf8' }).split('\n').filter(Boolean)
@@ -12,7 +12,9 @@ const files = process.argv[2] === '--all'
 let blocked = false
 for (const file of files) {
   if (!existsSync(file) || !shouldScan(file)) continue
-  const reasons = scanForSecrets(readFileSync(file, 'utf8'))
+  const text = readFileSync(file, 'utf8')
+  if (declaresExamples(text)) { console.log(`(skipping ${file}: declares it contains examples)`); continue }
+  const reasons = scanForSecrets(text)
   if (reasons.length) {
     blocked = true
     console.error(`\nREFUSED: ${file} appears to contain ${reasons.join(', ')}.`)

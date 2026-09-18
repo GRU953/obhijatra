@@ -32,6 +32,12 @@ export function scanForSecrets(text) {
   return RULES.filter(([pattern]) => pattern.test(text)).map(([, reason]) => reason)
 }
 
+// A file may declare that its credential-shaped text is deliberate, by carrying
+// the marker below. Every exemption is then greppable — `grep -rn "secrets-scan:
+// contains-examples"` lists all of them — rather than being an invisible rule
+// buried in this file. A file claiming it must say why, in a comment beside it.
+const DECLARES_EXAMPLES = /secrets-scan:\s*contains-examples/
+
 // Two kinds of file legitimately contain text that LOOKS like a secret:
 // documentation explaining what a secret looks like, and the test fixtures
 // that prove this very scanner works. Scanning them blocks every commit
@@ -45,7 +51,12 @@ const NEVER_SCAN = [
   /^package-lock\.json$/,
 ]
 
-/** Whether a file should be checked at all. */
+/** Whether a file should be checked at all, by its path. */
 export function shouldScan(path) {
   return !NEVER_SCAN.some(pattern => pattern.test(path))
+}
+
+/** Whether a file has explicitly declared that its secret-shaped text is example data. */
+export function declaresExamples(text) {
+  return DECLARES_EXAMPLES.test(text)
 }

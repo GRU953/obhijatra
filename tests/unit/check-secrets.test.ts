@@ -50,3 +50,14 @@ describe('shouldScan', () => {
     expect(shouldScan('.github/workflows/backup.yml')).toBe(true)
   })
 })
+
+describe('declaring example data', () => {
+  it('skips a file that explicitly declares it holds examples', async () => {
+    const { declaresExamples } = await import('../../scripts/check-secrets.mjs')
+    expect(declaresExamples('// secrets-scan: contains-examples\nconst x = 1')).toBe(true)
+  })
+  it('does not skip an ordinary file', async () => {
+    const { declaresExamples } = await import('../../scripts/check-secrets.mjs')
+    expect(declaresExamples('const x = 1')).toBe(false)
+  })
+})
