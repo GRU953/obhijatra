@@ -64,3 +64,10 @@ report to the US government**.
 
 Action: check this before the first public Play Store release.
 Reference: <https://discuss.zetetic.net/t/export-requirements-for-applications-using-sqlcipher/47>
+
+## Web headers still to set
+
+`frame-ancestors 'none'` cannot be delivered in a page's own markup — browsers
+ignore it there and warn. It must be sent as an HTTP header by whatever serves
+the website. Set it when the website is first deployed, alongside
+`Strict-Transport-Security` and `X-Content-Type-Options: nosniff`.

@@ -70,12 +70,23 @@ jobs:
         continue-on-error: true
         id: r2
         run: |
-          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "SKIPPED: needs CLOUDFLARE_ACCOUNT_ID as well as the token."; exit 0
+          # R2 speaks the same storage language as Backblaze, so one method
+          # covers both and we need no extra tool. The address is built from
+          # the account id, so there is one less thing to paste and mistype.
+          if [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "SKIPPED: needs R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY."
+            echo "Get them from Cloudflare: R2 -> Manage R2 API Tokens -> Create API Token"
+            echo "-> Object Read & Write. It shows an Access Key ID and a Secret Access Key."
+            exit 1
           fi
-          npx --yes wrangler@latest r2 object put "obhijatra-backups/$(date +%F).sql.gpg" --file dump.sql.gpg --remote
+          AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" \
+          AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" \
+          aws s3 cp dump.sql.gpg "s3://obhijatra-backups/$(date +%F).sql.gpg" \
+            --endpoint-url "https://$CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com" \
+            --checksum-algorithm CRC32
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Copy 2 of 3 — Backblaze B2
