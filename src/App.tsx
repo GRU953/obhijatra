@@ -14,6 +14,8 @@ import { countWaiting, canWorkOffline } from './data/local/submissions'
 import { fingerprintAvailable, askForFingerprint } from './security/unlock'
 import { currentSession, signOut, type SignedIn } from './data/remote/session'
 import { helloForm } from './forms/helloForm'
+import { formsAvailable } from './data/local/formStore'
+import type { FormDefinition } from './forms/definition'
 import { UnlockScreen } from './ui/UnlockScreen'
 import { SignInScreen } from './ui/SignInScreen'
 import { FormScreen } from './ui/FormScreen'
@@ -29,8 +31,15 @@ export function App() {
   const [problem, setProblem] = useState('')
   const [session, setSession] = useState<SignedIn | null>(null)
   const [waiting, setWaiting] = useState(0)
+  // Forms this phone has actually received. Until one arrives, the built-in one
+  // is offered so the app is never empty and unusable.
+  const [forms, setForms] = useState<FormDefinition[]>([])
+  const [chosen, setChosen] = useState<FormDefinition | null>(null)
 
-  const refreshWaiting = useCallback(() => { void countWaiting().then(setWaiting).catch(() => {}) }, [])
+  const refreshWaiting = useCallback(() => {
+    void countWaiting().then(setWaiting).catch(() => {})
+    void formsAvailable().then(setForms).catch(() => setForms([]))
+  }, [])
 
   /** Runs once the person has been let in. Opens the database, THEN continues. */
   const afterUnlocked = useCallback(async () => {
@@ -99,8 +108,29 @@ export function App() {
       {stage === 'working' && session && (
         <>
           <SyncStatus waiting={waiting} onChanged={refreshWaiting} />
+          {forms.length > 0 && (
+            <div style={{ padding: `0 ${tokens.space.lg}px` }}>
+              <p style={{ fontSize: tokens.text.label.size, color: tokens.color.outline, margin: 0 }}>
+                ফর্ম বেছে নিন · Choose a form
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: tokens.space.sm, marginTop: tokens.space.sm }}>
+                {forms.map((f) => {
+                  const active = (chosen ?? forms[0])?.formId === f.formId
+                  return (
+                    <button key={f.formId} onClick={() => setChosen(f)} style={{
+                      minHeight: tokens.space.minTapTarget, padding: `0 ${tokens.space.md}px`,
+                      fontSize: tokens.text.body.size, borderRadius: tokens.radius.full,
+                      border: `1px solid ${tokens.color.primary}`,
+                      background: active ? tokens.color.primary : tokens.color.surface,
+                      color: active ? tokens.color.onPrimary : tokens.color.primary,
+                    }}>{f.title.bn} · {f.title.en}</button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
           <FormScreen
-            form={helloForm}
+            form={chosen ?? forms[0] ?? helloForm}
             organisationId={session.organisationId}
             collectedBy={session.userId}
             deviceId="phone-1"

@@ -38,4 +38,16 @@ CREATE TABLE IF NOT EXISTS drafts (
   started_at      TEXT NOT NULL,
   updated_at      TEXT NOT NULL
 );
+
+-- Sealed editions the phone holds. Kept inside the locked database like
+-- everything else, because a form's wording can itself be sensitive -- the
+-- questions a programme asks reveal what that programme is.
+CREATE TABLE IF NOT EXISTS form_editions (
+  form_id        TEXT NOT NULL,
+  edition        INTEGER NOT NULL,
+  definition_json TEXT NOT NULL,
+  fingerprint    TEXT NOT NULL,
+  received_at    TEXT NOT NULL,
+  PRIMARY KEY (form_id, edition)
+);
 `
