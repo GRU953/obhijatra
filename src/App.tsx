@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react'
 import { tokens } from './ui/tokens'
 import { both } from './ui/text'
 import { openEncryptedDatabase, LockedOutError, describeLock } from './data/local/database'
-import { countWaiting } from './data/local/submissions'
+import { countWaiting, canWorkOffline } from './data/local/submissions'
 import { currentSession, signOut, type SignedIn } from './data/remote/session'
 import { helloForm } from './forms/helloForm'
 import { UnlockScreen } from './ui/UnlockScreen'
@@ -38,7 +38,9 @@ export function App() {
     void (async () => {
       try {
         setLockNote(await describeLock())
-        await openEncryptedDatabase()
+        // The website has no locked database to open -- it is the online tool
+        // for office roles, by design -- so it goes straight to signing in.
+        if (canWorkOffline()) await openEncryptedDatabase()
         await afterUnlock()
       } catch (error) {
         if (error instanceof LockedOutError) { setLockReason(error.message); setStage('locked'); return }

@@ -1,6 +1,6 @@
 // Proves a form filled in with no signal is genuinely saved, and stays saved.
 // Backed by a real in-memory SQLite database, so the SQL is actually exercised.
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { saveSubmission, listUnsent, markSent, countWaiting, resetLocalForTest }
   from '../../src/data/local/submissions'
 
@@ -65,5 +65,26 @@ describe('saving a form with no internet', () => {
 
   it('does nothing harmful when told to mark an empty list as sent', async () => {
     await expect(markSent([])).resolves.toBeUndefined()
+  })
+})
+
+describe('the website, which has no locked database', () => {
+  // A browser has no security chip, cannot limit guessing, and can silently
+  // delete what it stored when the computer runs low on space. So the website
+  // never promises to hold work offline -- it says so, and writes straight to
+  // the server. This is a deliberate difference, and it is tested.
+  it('never reports work waiting, because it never queues any', async () => {
+    const core = await import('@capacitor/core')
+    const spy = vi.spyOn(core.Capacitor, 'getPlatform').mockReturnValue('web')
+    const { canWorkOffline, countWaiting: count, listUnsent: list } =
+      await import('../../src/data/local/submissions')
+    expect(canWorkOffline()).toBe(false)
+    expect(await count()).toBe(0)
+    expect(await list()).toEqual([])
+    spy.mockRestore()
+  })
+  it('knows the phone CAN work offline', async () => {
+    const { canWorkOffline } = await import('../../src/data/local/submissions')
+    expect(canWorkOffline()).toBe(true)
   })
 })

@@ -19,3 +19,4 @@ android/app/build/
 !.env.example
 *.keystore
 *.jks
+.claude/

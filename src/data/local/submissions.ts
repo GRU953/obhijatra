@@ -1,8 +1,19 @@
 // WHAT THIS FILE IS FOR
 //   Saves a filled-in form onto the phone, and keeps track of which ones have
 //   not reached the server yet. Everything here works with no internet at all.
+import { Capacitor } from '@capacitor/core'
 import { openEncryptedDatabase } from './database'
 import { LOCAL_SCHEMA } from './schema'
+import { getSupabase } from '../remote/supabase'
+
+/**
+ * Whether this device can hold work safely while offline.
+ * The phone can: it has a security chip and a locked database. A browser
+ * cannot, so the website writes straight to the server and says so plainly.
+ */
+export function canWorkOffline(): boolean {
+  return Capacitor.getPlatform() !== 'web'
+}
 
 export type Submission = {
   id: string
@@ -46,6 +57,25 @@ function toSubmission(row: Row): Submission {
 
 export async function saveSubmission(input: NewSubmission): Promise<string> {
   const id = crypto.randomUUID()
+
+  if (!canWorkOffline()) {
+    // Website: straight to the server. If there is no connection the person is
+    // told immediately, rather than being promised their work is safe when a
+    // browser cannot honestly make that promise.
+    const { error } = await getSupabase().from('submissions').insert({
+      id,
+      organisation_id: input.organisationId,
+      form_id: input.formId,
+      form_version: input.formVersion,
+      collected_by: input.collectedBy,
+      collected_at: new Date().toISOString(),
+      device_id: input.deviceId,
+      answers: input.answers,
+    })
+    if (error) throw new Error(error.message)
+    return id
+  }
+
   const connection = await db()
   await connection.run(
     `INSERT INTO submissions
@@ -58,6 +88,7 @@ export async function saveSubmission(input: NewSubmission): Promise<string> {
 
 /** Everything still waiting to reach the server, oldest first. */
 export async function listUnsent(): Promise<Submission[]> {
+  if (!canWorkOffline()) return []   // the website never queues
   const connection = await db()
   const result = await connection.query(
     `SELECT * FROM submissions WHERE sent_at IS NULL ORDER BY collected_at ASC, id ASC`)
@@ -65,6 +96,7 @@ export async function listUnsent(): Promise<Submission[]> {
 }
 
 export async function countWaiting(): Promise<number> {
+  if (!canWorkOffline()) return 0
   const connection = await db()
   const result = await connection.query(
     `SELECT count(*) AS n FROM submissions WHERE sent_at IS NULL`)
