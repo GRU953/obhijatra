@@ -26,18 +26,7 @@ jobs:
 
       - name: Work out its fingerprint
         id: form
-        run: |
-          # The same code the phone works out for itself, so the phone can tell
-          # whether what arrived is what was published.
-          npx tsx -e "
-            import { readFileSync } from 'node:fs'
-            import { fingerprintOf } from './src/forms/fingerprint'
-            const d = JSON.parse(readFileSync('forms/${{ inputs.file }}', 'utf8'))
-            const fp = await fingerprintOf(d)
-            console.log('formId=' + d.formId)
-            console.log('fingerprint=' + fp)
-          " >> \$GITHUB_OUTPUT
-          cat \$GITHUB_OUTPUT
+        run: npx tsx scripts/fingerprint-form.ts "forms/${{ inputs.file }}" >> "$GITHUB_OUTPUT"
 
       - name: Publish it
         run: |
