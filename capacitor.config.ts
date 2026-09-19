@@ -12,12 +12,15 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   plugins: {
     CapacitorSQLite: {
+      // The database stays encrypted. What changed is WHO asks for the
+      // fingerprint.
       androidIsEncryption: true,
-      androidBiometric: {
-        biometricAuth: true,
-        biometricTitle: 'Unlock Obhijatra',
-        biometricSubTitle: 'Use your fingerprint to open your work',
-      },
+      // Deliberately off. The plugin's own fingerprint gate is all-or-nothing:
+      // with it on, a phone with no fingerprint sensor can never open its
+      // database at all, and the PIN fallback this project requires cannot
+      // work. The app now asks for the fingerprint itself, and falls back to a
+      // PIN when there is no sensor, no enrolled finger, or nobody touches it.
+      androidBiometric: { biometricAuth: false },
     },
   },
 }

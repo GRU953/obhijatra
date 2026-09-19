@@ -20,16 +20,28 @@ export function FormScreen({ form, organisationId, collectedBy, deviceId, onSave
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [missing, setMissing] = useState<string[]>([])
   const [note, setNote] = useState('')
+  const [problem, setProblem] = useState('')
+  const [busy, setBusy] = useState(false)
 
   const save = async () => {
     const blank = form.questions.filter(q => q.required && !(answers[q.id] ?? '').trim()).map(q => q.id)
     setMissing(blank)
     if (blank.length > 0) return
-    await saveSubmission({
-      organisationId, collectedBy, deviceId,
-      formId: form.id, formVersion: form.version, answers,
-    })
-    setAnswers({}); setNote(both('saved')); onSaved()
+    setBusy(true); setProblem('')
+    try {
+      await saveSubmission({
+        organisationId, collectedBy, deviceId,
+        formId: form.id, formVersion: form.version, answers,
+      })
+      setAnswers({}); setNote(both('saved')); onSaved()
+    } catch (error) {
+      // Never silent. An earlier version let this fail invisibly, and the Save
+      // button simply did nothing -- which is worse than any error message.
+      setNote('')
+      setProblem(error instanceof Error ? error.message : String(error))
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -59,12 +71,18 @@ export function FormScreen({ form, organisationId, collectedBy, deviceId, onSave
           )}
         </label>
       ))}
-      <button onClick={() => { void save() }} style={{
+      <button onClick={() => { void save() }} disabled={busy} style={{
         minHeight: tokens.space.minTapTarget, width: '100%',
         fontSize: tokens.text.body.size, borderRadius: tokens.radius.full, border: 'none',
         background: tokens.color.primary, color: tokens.color.onPrimary,
-      }}>{both('save')}</button>
+        opacity: busy ? 0.5 : 1,
+      }}>{busy ? '…' : both('save')}</button>
       <p style={{ color: tokens.color.primary, minHeight: tokens.space.lg }}>{note}</p>
+      {problem && (
+        <p style={{ color: tokens.color.error }}>
+          {problem}
+        </p>
+      )}
       <p style={{ fontSize: tokens.text.label.size, color: tokens.color.outline }}>
         {text.appName.bn} · {form.id} v{form.version}
       </p>

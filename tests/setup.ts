@@ -12,6 +12,13 @@ vi.mock('@capacitor/core', () => ({
   registerPlugin: () => ({}),
 }))
 
+vi.mock('@capgo/capacitor-native-biometric', () => ({
+  NativeBiometric: {
+    isAvailable: async () => ({ isAvailable: true }),
+    verifyIdentity: async () => {},
+  },
+}))
+
 vi.mock('@capacitor/preferences', () => {
   const store = new Map<string, string>()
   return {
