@@ -40,6 +40,28 @@ insert into submissions (organisation_id, form_id, form_version, collected_by, c
 values ('00000000-0000-0000-0000-0000000000a1', 'hello', 1,
         '00000000-0000-0000-0000-0000000000a2', now(), 'phone-a', '{"name":"A only"}');
 
+-- Roles are assigned BEFORE the session starts acting as a signed-in user.
+-- A signed-in account must never be able to promote itself to supervisor, and
+-- there is deliberately no update policy on profiles that would let it. Doing
+-- this after the role switch silently changes nothing, which is correct.
+update profiles set role = 'worker'     where id = '00000000-0000-0000-0000-0000000000a2';
+update profiles set role = 'supervisor' where id = '00000000-0000-0000-0000-0000000000b2';
+
+-- Prove that the wall just relied on is real, rather than assuming it.
+do $$
+declare changed int;
+begin
+  set local role authenticated;
+  set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000a2","role":"authenticated"}';
+  update profiles set role = 'supervisor' where id = '00000000-0000-0000-0000-0000000000a2';
+  get diagnostics changed = row_count;
+  reset role;
+  if changed > 0 then
+    raise exception 'FAILED: a worker promoted themselves to supervisor';
+  end if;
+  raise notice 'PASS: a worker cannot promote themselves to supervisor';
+end $$;
+
 -- Become Worker A.
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000a2","role":"authenticated"}';
@@ -83,10 +105,6 @@ end $$;
 -- ============================================================================
 -- SEALED EDITIONS (added with migration 0003)
 -- ============================================================================
-
--- Worker A is a plain worker; worker B is made a supervisor.
-update profiles set role = 'worker'     where id = '00000000-0000-0000-0000-0000000000a2';
-update profiles set role = 'supervisor' where id = '00000000-0000-0000-0000-0000000000b2';
 
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000a2","role":"authenticated"}';
 do $$
