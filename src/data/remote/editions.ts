@@ -13,7 +13,12 @@ import type { EditionSource, EditionSummary } from '../sync/formDownload'
 export const serverEditions: EditionSource = {
   async listEditions(): Promise<EditionSummary[]> {
     const { data, error } = await getSupabase()
-      .from('form_versions')
+      // Asks the list that excludes placeholders. Migration 0004 created an
+      // edition for each form that already had answers, so those answers had
+      // something valid to point at. Those have no questions and are not forms
+      // anyone should fill in; offering one to a phone produced a refusal that
+      // looked like a fault but was the check working.
+      .from('form_editions_for_collection')
       .select('form_id, edition, fingerprint')
     if (error) throw new Error(error.message)
     return (data ?? []) as EditionSummary[]
@@ -21,7 +26,7 @@ export const serverEditions: EditionSource = {
 
   async fetchEdition(formId: string, edition: number) {
     const { data, error } = await getSupabase()
-      .from('form_versions')
+      .from('form_editions_for_collection')
       .select('definition, fingerprint')
       .eq('form_id', formId).eq('edition', edition)
       .single()

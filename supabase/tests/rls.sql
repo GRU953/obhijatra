@@ -175,6 +175,32 @@ begin
   set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000b2","role":"authenticated"}';
 end $$;
 
+-- A placeholder edition must never be offered to a phone.
+do $$
+declare offered int;
+begin
+  reset role;
+  insert into form_versions (organisation_id, form_id, edition, definition, fingerprint, published_by)
+  values ('00000000-0000-0000-0000-0000000000b1', 'placeholder', 1,
+          '{"formId":"placeholder","edition":1,"questions":[],"reconstructed":true}'::jsonb,
+          'reconstructed', '00000000-0000-0000-0000-0000000000b2')
+  on conflict do nothing;
+  set local role authenticated;
+  set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000b2","role":"authenticated"}';
+
+  select count(*) into offered from form_editions_for_collection where form_id = 'placeholder';
+  if offered > 0 then
+    raise exception 'FAILED: a placeholder edition was offered to phones';
+  end if;
+  raise notice 'PASS: a placeholder edition is not offered to phones';
+
+  select count(*) into offered from form_editions_for_collection where form_id = 'household';
+  if offered = 0 then
+    raise exception 'FAILED: a real published form was hidden from phones';
+  end if;
+  raise notice 'PASS: a real published form is still offered to phones';
+end $$;
+
 do $$
 begin
   begin
