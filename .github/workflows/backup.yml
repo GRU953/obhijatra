@@ -24,10 +24,31 @@ jobs:
           [ -n "${{ secrets.B2_KEY_ID }}" ] && [ -n "${{ secrets.B2_ENDPOINT }}" ] && echo "copy 2 Backblaze B2  : configured" || echo "copy 2 Backblaze B2  : NOT configured (needs B2_ENDPOINT, e.g. https://s3.us-west-004.backblazeb2.com)"
           echo "copy 3 GitHub        : configured"
 
+      - name: Fetch a backup tool that matches the server
+        run: |
+          # pg_dump refuses to read a database newer than itself. Build machines
+          # ship an older one, so we ask the server its version and install the
+          # matching tool. Doing it this way means a future server upgrade does
+          # not silently stop the backups.
+          SAFE=$(node scripts/normalise-db-url.mjs "$RAW")
+          MAJOR=$(psql "$SAFE" -tAc "show server_version" | cut -d. -f1)
+          echo "the server is PostgreSQL $MAJOR"
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq "postgresql-client-$MAJOR"
+          echo "PG_BIN=/usr/lib/postgresql/$MAJOR/bin" >> "$GITHUB_ENV"
+          /usr/lib/postgresql/$MAJOR/bin/pg_dump --version
+        env:
+          RAW: ${{ secrets.SUPABASE_DB_URL }}
+
       - name: Take the backup
         run: |
           SAFE=$(node scripts/normalise-db-url.mjs "$RAW")
-          pg_dump "$SAFE" --no-owner --no-acl > dump.sql
+          "$PG_BIN/pg_dump" "$SAFE" --no-owner --no-acl > dump.sql
+          echo "dump size: $(du -h dump.sql | cut -f1)"
         env:
           RAW: ${{ secrets.SUPABASE_DB_URL }}
 
