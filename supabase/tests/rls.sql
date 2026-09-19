@@ -182,6 +182,23 @@ begin
   set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000b2","role":"authenticated"}';
 end $$;
 
+-- Sealed must also mean sealed against being emptied wholesale. A row trigger
+-- does not fire for a statement-level clear, so without a trigger of its own,
+-- one command would empty every published form in every organisation.
+do $$
+begin
+  reset role;
+  begin
+    execute 'truncate form_versions';
+    raise exception 'FAILED: every published form was cleared by one command';
+  exception when others then
+    if position('cannot be emptied' in sqlerrm) = 0 then raise; end if;
+    raise notice 'PASS: sealed editions cannot be emptied wholesale, even by the owner';
+  end;
+  set local role authenticated;
+  set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000b2","role":"authenticated"}';
+end $$;
+
 -- A placeholder edition must never be offered to a phone.
 do $$
 declare offered int;
