@@ -17,6 +17,7 @@ import { both } from './text'
 import type { FormDefinition } from '../forms/definition'
 import { shownQuestions, prepareForSaving, checkAnswers } from '../forms/answers'
 import { saveSubmission } from '../data/local/submissions'
+import { QuestionField } from './QuestionField'
 
 type Props = {
   form: FormDefinition
@@ -62,19 +63,6 @@ export function FormScreen({ form, organisationId, collectedBy, deviceId, onSave
     }
   }
 
-  const field = (id: string, type: string, value: unknown, wrong: boolean) => (
-    <input
-      type={type}
-      value={value === undefined || value === null ? '' : String(value)}
-      onChange={(e) => set(id, type === 'number' ? e.target.valueAsNumber : e.target.value)}
-      style={{
-        width: '100%', minHeight: tokens.space.minTapTarget, boxSizing: 'border-box',
-        fontSize: tokens.text.body.size, padding: tokens.space.sm,
-        borderRadius: tokens.radius.sm,
-        border: `1px solid ${wrong ? tokens.color.error : tokens.color.outline}`,
-      }} />
-  )
-
   return (
     <section style={{ padding: tokens.space.lg }}>
       <h2 style={{ fontSize: tokens.text.title.size }}>
@@ -89,23 +77,8 @@ export function FormScreen({ form, organisationId, collectedBy, deviceId, onSave
               {q.label.bn} · {q.label.en}{q.required ? ' *' : ''}
             </span>
 
-            {q.type === 'yes-no' ? (
-              <div style={{ display: 'flex', gap: tokens.space.sm }}>
-                {[true, false].map((choice) => (
-                  <button key={String(choice)} type="button" onClick={() => set(q.id, choice)} style={{
-                    flex: 1, minHeight: tokens.space.minTapTarget, fontSize: tokens.text.body.size,
-                    borderRadius: tokens.radius.full,
-                    border: `1px solid ${tokens.color.primary}`,
-                    background: answers[q.id] === choice ? tokens.color.primary : tokens.color.surface,
-                    color: answers[q.id] === choice ? tokens.color.onPrimary : tokens.color.primary,
-                  }}>{choice ? 'হ্যাঁ · Yes' : 'না · No'}</button>
-                ))}
-              </div>
-            ) : q.type === 'whole-number' || q.type === 'decimal-number' ? (
-              field(q.id, 'number', answers[q.id], wrong)
-            ) : q.type === 'note' ? null : (
-              field(q.id, 'text', answers[q.id], wrong)
-            )}
+            <QuestionField question={q} value={answers[q.id]} wrong={wrong}
+              onChange={(v) => set(q.id, v)} />
           </label>
         )
       })}
