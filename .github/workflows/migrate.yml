@@ -26,7 +26,7 @@ jobs:
         run: |
           for file in supabase/migrations/*.sql; do
             echo "--> applying $file"
-            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$file"
+            psql "$DATABASE_URL" --single-transaction -v ON_ERROR_STOP=1 -f "$file"
           done
         env:
           DATABASE_URL: ${{ steps.db.outputs.url }}
