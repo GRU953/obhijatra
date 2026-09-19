@@ -24,10 +24,17 @@ values ('00000000-0000-0000-0000-0000000000a2', 'worker.a@test.invalid',
         '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated')
 on conflict (id) do nothing;
 
+-- Creating a sign-in record now fires the trigger from migration 0002, which
+-- gives that person their own brand-new organisation. For this test we want
+-- them in the two specific organisations above, so we overwrite what the
+-- trigger chose. (Without this the test fails with "worker A cannot see their
+-- own submissions" -- which is correct, because the trigger had moved them.)
 insert into profiles (id, organisation_id, display_name) values
   ('00000000-0000-0000-0000-0000000000a2', '00000000-0000-0000-0000-0000000000a1', 'Worker A'),
   ('00000000-0000-0000-0000-0000000000b2', '00000000-0000-0000-0000-0000000000b1', 'Worker B')
-on conflict (id) do nothing;
+on conflict (id) do update
+  set organisation_id = excluded.organisation_id,
+      display_name    = excluded.display_name;
 
 insert into submissions (organisation_id, form_id, form_version, collected_by, collected_at, device_id, answers)
 values ('00000000-0000-0000-0000-0000000000a1', 'hello', 1,
