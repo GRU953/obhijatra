@@ -63,6 +63,8 @@ jobs:
           echo "locked size: $(du -h dump.sql.gpg | cut -f1)"
 
       - name: Copy 1 of 3 — Cloudflare R2
+        continue-on-error: true
+        id: r2
         run: |
           if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
             echo "SKIPPED: needs CLOUDFLARE_ACCOUNT_ID as well as the token."; exit 0
@@ -73,6 +75,8 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Copy 2 of 3 — Backblaze B2
+        continue-on-error: true
+        id: b2
         run: |
           if [ -z "$B2_ENDPOINT" ]; then
             echo "SKIPPED: needs B2_ENDPOINT, e.g. https://s3.us-west-004.backblazeb2.com"; exit 0
@@ -84,10 +88,31 @@ jobs:
           B2_ENDPOINT: ${{ secrets.B2_ENDPOINT }}
 
       - name: Copy 3 of 3 — GitHub release
+        continue-on-error: true
+        id: ghr
         run: gh release create "backup-$(date +%F)" dump.sql.gpg --notes "Automatic nightly backup. Locked with the backup password." || gh release upload "backup-$(date +%F)" dump.sql.gpg --clobber
         env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
 
+      - name: Count how many copies actually landed
+        run: |
+          # Three copies exist so that one failing does not matter. Each is
+          # therefore allowed to fail on its own. What is NOT allowed is for the
+          # night to pass with too few copies and nobody noticing.
+          n=0
+          [ "${{ steps.r2.outcome }}" = "success" ] && { echo "copy 1 Cloudflare R2 : landed"; n=$((n+1)); } || echo "copy 1 Cloudflare R2 : FAILED"
+          [ "${{ steps.b2.outcome }}" = "success" ] && { echo "copy 2 Backblaze B2  : landed"; n=$((n+1)); } || echo "copy 2 Backblaze B2  : FAILED"
+          [ "${{ steps.ghr.outcome }}" = "success" ] && { echo "copy 3 GitHub        : landed"; n=$((n+1)); } || echo "copy 3 GitHub        : FAILED"
+          echo
+          echo "$n of 3 copies landed."
+          if [ "$n" -lt 2 ]; then
+            echo "::error::Fewer than two copies of the database survived tonight. Fix this before relying on the backups."
+            exit 1
+          fi
+          [ "$n" -lt 3 ] && echo "::warning::Only $n of 3 copies landed. The data is safe, but a destination needs attention."
+          exit 0
+
       - name: Remove backups older than 35 days, so a deletion truly completes
+        if: always()
         run: |
           # Erasure is a legal right. A backup kept forever defeats it, so the
           # window is deliberately bounded rather than infinite.
