@@ -9,6 +9,10 @@ on:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    # Only this workflow may write to the repository, and only to store a
+    # backup as a release. Every other workflow stays read-only.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
