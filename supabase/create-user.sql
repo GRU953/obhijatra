@@ -20,13 +20,14 @@
 --   So the values are read into a temporary table FIRST, in plain statements,
 --   and the block below reads them from there.
 --
--- EXPECTS: :email, :display_name, :organisation_name, :password
+-- EXPECTS: :email, :display_name, :organisation_name, :password, :reset_password
 
 create temporary table _input on commit drop as
 select :'email'::text             as email,
        :'display_name'::text      as display_name,
        :'organisation_name'::text as organisation_name,
-       :'password'::text          as password;
+       :'password'::text          as password,
+       (:'reset_password' = 'yes')  as reset_password;
 
 do $$
 declare
@@ -36,7 +37,18 @@ begin
   select * into i from _input;
 
   if exists (select 1 from auth.users where email = i.email) then
-    raise notice 'SKIPPED: % already exists. Nothing was changed.', i.email;
+    if not i.reset_password then
+      raise notice 'SKIPPED: % already exists. Nothing was changed. Run again with reset_password = yes to set a new password.', i.email;
+      return;
+    end if;
+    -- A supervisor resetting a colleague's forgotten password, in person.
+    -- No email, no reset link, no inbox required.
+    update auth.users
+       set encrypted_password = extensions.crypt(i.password, extensions.gen_salt('bf')),
+           email_confirmed_at = coalesce(email_confirmed_at, now()),
+           updated_at         = now()
+     where email = i.email;
+    raise notice 'PASSWORD RESET: % can now sign in with the newly stored password.', i.email;
     return;
   end if;
 
