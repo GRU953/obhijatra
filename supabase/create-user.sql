@@ -38,8 +38,15 @@ begin
   select * into i from _input;
 
   if exists (select 1 from auth.users where email = i.email) then
+    -- What someone is ALLOWED to do and what their PASSWORD is are two separate
+    -- things. Making a colleague a supervisor should never require resetting
+    -- their password and handing them a new one, so the role is applied either
+    -- way and only the password is gated.
+    update profiles set role = i.role
+     where id = (select id from auth.users where email = i.email);
+
     if not i.reset_password then
-      raise notice 'SKIPPED: % already exists. Nothing was changed. Run again with reset_password = yes to set a new password.', i.email;
+      raise notice 'UPDATED: % is now a %. Their password was left alone.', i.email, i.role;
       return;
     end if;
     -- A supervisor resetting a colleague's forgotten password, in person.
@@ -49,7 +56,6 @@ begin
            email_confirmed_at = coalesce(email_confirmed_at, now()),
            updated_at         = now()
      where email = i.email;
-    update profiles set role = i.role where id = (select id from auth.users where email = i.email);
     raise notice 'PASSWORD RESET: % can now sign in, as a %.', i.email, i.role;
     return;
   end if;
