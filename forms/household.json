@@ -1,0 +1,35 @@
+{
+  "formId": "household",
+  "edition": 1,
+  "title": { "bn": "পরিবারের তালিকা", "en": "Household register" },
+  "questions": [
+    { "id": "name", "type": "short-text", "required": true,
+      "label": { "bn": "পরিবার প্রধানের নাম", "en": "Head of household" } },
+    { "id": "village", "type": "short-text", "required": true,
+      "label": { "bn": "গ্রাম", "en": "Village" } },
+    { "id": "mobile", "type": "mobile-number", "required": false,
+      "label": { "bn": "মোবাইল নম্বর", "en": "Mobile number" },
+      "checks": [{ "type": "matches", "pattern": "bangladeshi-mobile",
+                   "message": { "bn": "সঠিক মোবাইল নম্বর নয়", "en": "Not a valid mobile number" } }] },
+    { "id": "hasChildren", "type": "yes-no", "required": true,
+      "label": { "bn": "পরিবারে ১৮ বছরের নিচে শিশু আছে?", "en": "Any children under 18?" } },
+    { "id": "childCount", "type": "whole-number", "required": true,
+      "label": { "bn": "কতজন শিশু?", "en": "How many children?" },
+      "showIf": { "question": "hasChildren", "operator": "is", "value": true },
+      "checks": [{ "type": "smallest", "value": 1,
+                   "message": { "bn": "কমপক্ষে ১ জন হতে হবে", "en": "Must be at least 1" } },
+                 { "type": "largest", "value": 30,
+                   "message": { "bn": "সংখ্যাটি অনেক বেশি মনে হচ্ছে", "en": "That seems too many" } }] },
+    { "id": "water", "type": "choose-one", "required": false,
+      "label": { "bn": "প্রধান পানির উৎস", "en": "Main source of water" },
+      "choices": [
+        { "value": "tubewell", "label": { "bn": "নলকূপ", "en": "Tubewell" } },
+        { "value": "piped",    "label": { "bn": "সরবরাহকৃত পানি", "en": "Piped supply" } },
+        { "value": "pond",     "label": { "bn": "পুকুর", "en": "Pond" } },
+        { "value": "other",    "label": { "bn": "অন্যান্য", "en": "Other" } }
+      ] },
+    { "id": "waterOther", "type": "short-text", "required": false,
+      "label": { "bn": "অন্যান্য হলে লিখুন", "en": "If other, please say" },
+      "showIf": { "question": "water", "operator": "is", "value": "other" } }
+  ]
+}

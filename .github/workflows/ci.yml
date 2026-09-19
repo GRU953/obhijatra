@@ -20,6 +20,9 @@ jobs:
       - name: Check the safety rules are obeyed
         run: npm run lint
 
+      - name: Check every form is sound
+        run: npx tsx scripts/check-forms.mjs
+
       - name: Run the tests
         run: npm run test
 

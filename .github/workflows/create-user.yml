@@ -15,6 +15,12 @@ on:
         description: 'The organisation to create for them'
         required: true
         default: 'Pilot organisation'
+      role:
+        description: 'What they are allowed to do'
+        required: true
+        default: 'worker'
+        type: choice
+        options: ['worker', 'supervisor']
       reset_password:
         description: 'If they already exist, set the stored password as their new one?'
         required: true
@@ -51,6 +57,7 @@ jobs:
             -v organisation_name="$ORG" \
             -v password="$PW" \
             -v reset_password="$RESET" \
+            -v role="$ROLE" \
             -f supabase/create-user.sql
         env:
           RAW: ${{ secrets.SUPABASE_DB_URL }}
@@ -59,3 +66,4 @@ jobs:
           DISPLAY_NAME: ${{ inputs.display_name }}
           ORG: ${{ inputs.organisation_name }}
           RESET: ${{ inputs.reset_password }}
+          ROLE: ${{ inputs.role }}

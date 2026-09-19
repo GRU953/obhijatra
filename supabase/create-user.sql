@@ -20,14 +20,15 @@
 --   So the values are read into a temporary table FIRST, in plain statements,
 --   and the block below reads them from there.
 --
--- EXPECTS: :email, :display_name, :organisation_name, :password, :reset_password
+-- EXPECTS: :email, :display_name, :organisation_name, :password, :reset_password, :role
 
 create temporary table _input on commit drop as
 select :'email'::text             as email,
        :'display_name'::text      as display_name,
        :'organisation_name'::text as organisation_name,
        :'password'::text          as password,
-       (:'reset_password' = 'yes')  as reset_password;
+       (:'reset_password' = 'yes')  as reset_password,
+       :'role'::text              as role;
 
 do $$
 declare
@@ -48,7 +49,8 @@ begin
            email_confirmed_at = coalesce(email_confirmed_at, now()),
            updated_at         = now()
      where email = i.email;
-    raise notice 'PASSWORD RESET: % can now sign in with the newly stored password.', i.email;
+    update profiles set role = i.role where id = (select id from auth.users where email = i.email);
+    raise notice 'PASSWORD RESET: % can now sign in, as a %.', i.email, i.role;
     return;
   end if;
 
@@ -77,7 +79,8 @@ begin
     'email', i.email, now(), now(), now()
   );
 
-  raise notice 'CREATED: % can now sign in. An organisation and profile were made automatically.', i.email;
+  update profiles set role = i.role where id = new_user;
+  raise notice 'CREATED: % can now sign in as a %. An organisation and profile were made automatically.', i.email, i.role;
 end $$;
 
 -- Show the result, so the run proves what it actually did.

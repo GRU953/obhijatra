@@ -1,0 +1,53 @@
+# Puts a form from the forms/ folder onto people's phones, as a new sealed
+# edition. Run it from the Actions tab.
+name: Publish a form
+on:
+  workflow_dispatch:
+    inputs:
+      file:
+        description: 'Which file in forms/ to publish, e.g. household.json'
+        required: true
+        default: 'household.json'
+      supervisor_email:
+        description: 'The supervisor publishing it'
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '24', cache: 'npm' }
+      - run: npm ci
+
+      - name: Refuse a form that is not sound
+        run: npx tsx scripts/check-forms.mjs
+
+      - name: Work out its fingerprint
+        id: form
+        run: |
+          # The same code the phone works out for itself, so the phone can tell
+          # whether what arrived is what was published.
+          npx tsx -e "
+            import { readFileSync } from 'node:fs'
+            import { fingerprintOf } from './src/forms/fingerprint'
+            const d = JSON.parse(readFileSync('forms/${{ inputs.file }}', 'utf8'))
+            const fp = await fingerprintOf(d)
+            console.log('formId=' + d.formId)
+            console.log('fingerprint=' + fp)
+          " >> \$GITHUB_OUTPUT
+          cat \$GITHUB_OUTPUT
+
+      - name: Publish it
+        run: |
+          SAFE=$(node scripts/normalise-db-url.mjs "$RAW")
+          psql "$SAFE" --single-transaction -v ON_ERROR_STOP=1 \
+            -v supervisor_email="$EMAIL" \
+            -v form_id="${{ steps.form.outputs.formId }}" \
+            -v definition="$(cat forms/${{ inputs.file }})" \
+            -v fingerprint="${{ steps.form.outputs.fingerprint }}" \
+            -f supabase/publish-form.sql
+        env:
+          RAW: ${{ secrets.SUPABASE_DB_URL }}
+          EMAIL: ${{ inputs.supervisor_email }}
