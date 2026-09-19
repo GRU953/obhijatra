@@ -1,0 +1,53 @@
+# Creates a person who can sign in, without sending any email.
+# Run it from the Actions tab: choose "Create a user", press "Run workflow".
+name: Create a user
+on:
+  workflow_dispatch:
+    inputs:
+      email:
+        description: 'Email address they will sign in with'
+        required: true
+      display_name:
+        description: 'Their name, as it should appear'
+        required: true
+        default: 'Administrator'
+      organisation_name:
+        description: 'The organisation to create for them'
+        required: true
+        default: 'Pilot organisation'
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '24' }
+
+      - name: Check a password has been set
+        run: |
+          if [ -z "$PW" ]; then
+            echo "::error::No password is stored. Add a repository secret called"
+            echo "::error::NEW_USER_PASSWORD, then run this again. The password is"
+            echo "::error::hidden from every log, including this one."
+            exit 1
+          fi
+          echo "password: found (hidden)"
+        env:
+          PW: ${{ secrets.NEW_USER_PASSWORD }}
+
+      - name: Create the person
+        run: |
+          SAFE=$(node scripts/normalise-db-url.mjs "$RAW")
+          psql "$SAFE" -v ON_ERROR_STOP=1 \
+            -v email="$EMAIL" \
+            -v display_name="$DISPLAY_NAME" \
+            -v organisation_name="$ORG" \
+            -v password="$PW" \
+            -f supabase/create-user.sql
+        env:
+          RAW: ${{ secrets.SUPABASE_DB_URL }}
+          PW: ${{ secrets.NEW_USER_PASSWORD }}
+          EMAIL: ${{ inputs.email }}
+          DISPLAY_NAME: ${{ inputs.display_name }}
+          ORG: ${{ inputs.organisation_name }}
