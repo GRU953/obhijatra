@@ -80,4 +80,55 @@ begin
   end;
 end $$;
 
+-- ============================================================================
+-- SEALED EDITIONS (added with migration 0003)
+-- ============================================================================
+
+-- Worker A is a plain worker; worker B is made a supervisor.
+update profiles set role = 'worker'     where id = '00000000-0000-0000-0000-0000000000a2';
+update profiles set role = 'supervisor' where id = '00000000-0000-0000-0000-0000000000b2';
+
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000a2","role":"authenticated"}';
+do $$
+begin
+  begin
+    perform publish_form_version('household', '{"formId":"household"}'::jsonb, 'abc');
+    raise exception 'FAILED: a plain worker was allowed to publish a form';
+  exception when others then
+    if position('supervisor' in sqlerrm) = 0 then raise; end if;
+    raise notice 'PASS: a plain worker was refused when publishing';
+  end;
+end $$;
+
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000b2","role":"authenticated"}';
+do $$
+declare made int;
+begin
+  made := publish_form_version('household', '{"formId":"household","edition":1}'::jsonb, 'abc');
+  if made <> 1 then raise exception 'FAILED: first edition should be numbered 1, got %', made; end if;
+  raise notice 'PASS: a supervisor published edition %', made;
+end $$;
+
+do $$
+begin
+  begin
+    update form_versions set fingerprint = 'tampered'
+     where organisation_id = '00000000-0000-0000-0000-0000000000b1';
+    raise exception 'FAILED: a published edition was altered';
+  exception when others then
+    if position('cannot be' in sqlerrm) = 0 then raise; end if;
+    raise notice 'PASS: altering a published edition was refused';
+  end;
+end $$;
+
+do $$
+begin
+  begin
+    perform publish_form_version('huge', jsonb_build_object('pad', repeat('x', 300000)), 'abc');
+    raise exception 'FAILED: a 300 KB definition was accepted';
+  exception when check_violation then
+    raise notice 'PASS: a definition larger than 256 KB was refused';
+  end;
+end $$;
+
 rollback;   -- the test leaves nothing behind
