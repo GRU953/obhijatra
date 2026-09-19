@@ -39,7 +39,7 @@ jobs:
       - name: Create the person
         run: |
           SAFE=$(node scripts/normalise-db-url.mjs "$RAW")
-          psql "$SAFE" -v ON_ERROR_STOP=1 \
+          psql "$SAFE" --single-transaction -v ON_ERROR_STOP=1 \
             -v email="$EMAIL" \
             -v display_name="$DISPLAY_NAME" \
             -v organisation_name="$ORG" \
