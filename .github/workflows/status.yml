@@ -1,0 +1,16 @@
+# Shows what is actually in the system. Read-only.
+name: Show what is in the system
+on: { workflow_dispatch: {} }
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '24' }
+      - name: Read the database
+        run: |
+          SAFE=$(node scripts/normalise-db-url.mjs "$RAW")
+          psql "$SAFE" -v ON_ERROR_STOP=1 -f supabase/status.sql
+        env:
+          RAW: ${{ secrets.SUPABASE_DB_URL }}
