@@ -119,7 +119,8 @@ set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000a2","r
 do $$
 begin
   begin
-    perform publish_form_version('household', '{"formId":"household"}'::jsonb, 'abc');
+    perform publish_form_version('household',
+    '{"formId":"household","edition":1,"questions":[{"id":"name"}]}'::jsonb, 'abc');
     raise exception 'FAILED: a plain worker was allowed to publish a form';
   exception when others then
     if position('supervisor' in sqlerrm) = 0 then raise; end if;
@@ -131,7 +132,13 @@ set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000b2","r
 do $$
 declare made int;
 begin
-  made := publish_form_version('household', '{"formId":"household","edition":1}'::jsonb, 'abc');
+  -- A realistic form. The first version of this fixture had no questions at
+  -- all, and the view correctly hid it from phones -- which failed the test and
+  -- was the right answer. A form with no questions is not a form.
+  made := publish_form_version('household',
+    '{"formId":"household","edition":1,"title":{"bn":"পরিবার","en":"Household"},
+      "questions":[{"id":"name","type":"short-text","required":true,
+                    "label":{"bn":"নাম","en":"Name"}}]}'::jsonb, 'abc');
   if made <> 1 then raise exception 'FAILED: first edition should be numbered 1, got %', made; end if;
   raise notice 'PASS: a supervisor published edition %', made;
 end $$;
