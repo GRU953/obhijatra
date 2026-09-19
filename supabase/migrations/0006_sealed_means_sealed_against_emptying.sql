@@ -1,13 +1,22 @@
 -- WHAT THIS DOES
 --   Closes a hole in the protection that migration 0003 described as absolute.
 --
--- THE HOLE
+-- THE HOLE, STATED ACCURATELY
 --   0003 put a trigger on form_versions refusing any change to a row, and the
 --   tests prove it binds even the database's own owner. But PostgreSQL fires row
---   triggers for UPDATE and DELETE only. Emptying a table wholesale is a
---   statement-level operation and fires neither -- so one command would have
---   silently cleared every published form in every organisation, straight past a
---   protection the documentation called unbreakable.
+--   triggers for UPDATE and DELETE only, never for a statement-level clear.
+--
+--   A review claimed one command would therefore empty every published form.
+--   Running it showed that is not quite true: a plain clear is already refused,
+--   because answers point at editions through a foreign key and PostgreSQL will
+--   not empty a table something else depends on. The claim was overstated, and
+--   the test caught it.
+--
+--   What IS true, and is the reason this migration exists: the cascading form of
+--   that command ignores the foreign-key check and would take every answer with
+--   it. And the incidental protection disappears entirely for any table nothing
+--   points at -- which is exactly the case for the access log Phase 3 is about
+--   to build. Relying on a foreign key that happens to exist is not a design.
 --
 --   This is the kind of gap that gets copied forward: the access log Phase 3 is
 --   about to build needs the same protection, and would have inherited the same

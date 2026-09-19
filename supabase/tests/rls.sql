@@ -182,18 +182,25 @@ begin
   set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000b2","role":"authenticated"}';
 end $$;
 
--- Sealed must also mean sealed against being emptied wholesale. A row trigger
--- does not fire for a statement-level clear, so without a trigger of its own,
--- one command would empty every published form in every organisation.
+-- Sealed must also mean sealed against being emptied wholesale.
+--
+-- A plain clear is already refused, but only because answers point at editions
+-- through a foreign key -- PostgreSQL will not empty a table something else
+-- depends on. That protection is real but incidental: it disappears the moment
+-- a table has nothing pointing at it, which is exactly the case for the access
+-- log Phase 3 is about to build.
+--
+-- The genuinely dangerous command is the one that ignores that check and takes
+-- every answer with it. That is what is tested here.
 do $$
 begin
   reset role;
   begin
-    execute 'truncate form_versions';
-    raise exception 'FAILED: every published form was cleared by one command';
+    execute 'truncate form_versions cascade';
+    raise exception 'FAILED: one command cleared every published form and every answer with it';
   exception when others then
     if position('cannot be emptied' in sqlerrm) = 0 then raise; end if;
-    raise notice 'PASS: sealed editions cannot be emptied wholesale, even by the owner';
+    raise notice 'PASS: sealed editions cannot be emptied wholesale, even by the owner, even with cascade';
   end;
   set local role authenticated;
   set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000b2","role":"authenticated"}';
