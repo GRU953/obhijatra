@@ -36,6 +36,15 @@ on conflict (id) do update
   set organisation_id = excluded.organisation_id,
       display_name    = excluded.display_name;
 
+-- An answer may only point at an edition that exists, so one is published
+-- first. This is the same order every real phone follows.
+alter table form_versions no force row level security;
+insert into form_versions (organisation_id, form_id, edition, definition, fingerprint, published_by)
+values ('00000000-0000-0000-0000-0000000000a1', 'hello', 1,
+        '{"formId":"hello","edition":1}'::jsonb, 'test', '00000000-0000-0000-0000-0000000000a2')
+on conflict do nothing;
+alter table form_versions force row level security;
+
 insert into submissions (organisation_id, form_id, form_version, collected_by, collected_at, device_id, answers)
 values ('00000000-0000-0000-0000-0000000000a1', 'hello', 1,
         '00000000-0000-0000-0000-0000000000a2', now(), 'phone-a', '{"name":"A only"}');
@@ -164,6 +173,18 @@ begin
   end;
   set local role authenticated;
   set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000b2","role":"authenticated"}';
+end $$;
+
+do $$
+begin
+  begin
+    insert into submissions (organisation_id, form_id, form_version, collected_by, collected_at, device_id, answers)
+    values ('00000000-0000-0000-0000-0000000000b1', 'never-published', 1,
+            '00000000-0000-0000-0000-0000000000b2', now(), 'phone-b', '{}');
+    raise exception 'FAILED: an answer was accepted against a form nobody published';
+  exception when foreign_key_violation then
+    raise notice 'PASS: an answer against a form nobody published was refused';
+  end;
 end $$;
 
 do $$
