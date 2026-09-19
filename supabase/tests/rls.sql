@@ -127,16 +127,43 @@ begin
   raise notice 'PASS: a supervisor published edition %', made;
 end $$;
 
+-- A sealed edition is protected by TWO separate layers, so both are tested.
+-- Layer 1: a signed-in account has no permission to update the table at all,
+-- so it is stopped before anything else runs.
 do $$
 begin
   begin
     update form_versions set fingerprint = 'tampered'
      where organisation_id = '00000000-0000-0000-0000-0000000000b1';
-    raise exception 'FAILED: a published edition was altered';
+    raise exception 'FAILED: a signed-in account altered a published edition';
+  exception when insufficient_privilege then
+    raise notice 'PASS: a signed-in account has no permission to alter a published edition';
+  end;
+end $$;
+
+-- Layer 2: the trigger, which is the one that also binds the database owner and
+-- any service script. Row permissions do not bind the owner; a trigger does.
+-- This is the layer that catches an accidental edit from the Supabase dashboard.
+do $$
+begin
+  reset role;
+  begin
+    update form_versions set fingerprint = 'tampered'
+     where organisation_id = '00000000-0000-0000-0000-0000000000b1';
+    raise exception 'FAILED: the owner altered a published edition';
   exception when others then
     if position('cannot be' in sqlerrm) = 0 then raise; end if;
-    raise notice 'PASS: altering a published edition was refused';
+    raise notice 'PASS: even the database owner is refused when altering a published edition';
   end;
+  begin
+    delete from form_versions where organisation_id = '00000000-0000-0000-0000-0000000000b1';
+    raise exception 'FAILED: the owner deleted a published edition';
+  exception when others then
+    if position('cannot be' in sqlerrm) = 0 then raise; end if;
+    raise notice 'PASS: even the database owner is refused when deleting a published edition';
+  end;
+  set local role authenticated;
+  set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000b2","role":"authenticated"}';
 end $$;
 
 do $$
