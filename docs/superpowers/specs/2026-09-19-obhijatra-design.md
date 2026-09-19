@@ -161,11 +161,20 @@ each July.
 
 ## 6. Build phases
 
-**Confirmed 19 September 2026: the owner will give 25–40 hours a week.** At that rate,
-phases 0–5 complete in roughly **5–7 months**. The figure is recorded rather than assumed
-because the research on nonprofit technology is blunt that the biggest risk is not a broken
-framework — it is the one person driving it stopping, and a plan built on an unstated
-assumption is how that happens quietly.
+**Superseded 19 September 2026, after Phases 0 and 1 completed.** The estimates
+below assumed a person typing. Phases 0 and 1 were estimated at 5–7 weeks and
+were completed in **one day** — every commit falls between 01:20 and 14:45 on
+19 September 2026.
+
+What actually paces this project is the **owner's availability**: decisions,
+fingerprint taps on a real phone, and accounts only he can create. On the day
+Phase 1 finished, three of the four blocking items were waiting on him, not on
+code. Later phase plans therefore give no hour estimates and instead state, per
+task, whether it is blocked on the owner. That is the only figure observed to
+mean anything.
+
+The week figures below are left unedited as a record of what was believed
+before there was evidence.
 
 ### Phase 0 — Foundations that cannot wait *(1 week)*
 Sandbox toolchain **(done — Java 21 LTS, Android SDK 36, adb, 853 MB, nothing system-wide)**.
